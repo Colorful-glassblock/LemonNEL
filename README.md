@@ -8,5 +8,6 @@
 mkdir C:\test
 del "C:\test" /f /s /q
 ```
-- 4.复制out文件夹到`run.exe`的同目录
-- 5.ALL DONE！
+- 4.按一下`Enter`,如果你是用的是`Windows`请按下`Ctrl+Z`，如果你使用如果你是用的是`类Unix系统`请按下`Ctrl+D`，然后在按下`Enter`
+- 5.复制out文件夹到`run.exe`的同目录
+- 6.ALL DONE！
