@@ -22,7 +22,7 @@ g++ -std=c++17 -o buildcmd.exe buildcmd.cpp -static
 
 **编译 test1.cpp：**
 ```bash
-g++ -std=c++17 -o run.exe test1.cpp -ladvapi32 -lshell32 -luser32 -lkernel32 -static
+g++ -std=c++17 -o run.exe run.cpp -ladvapi32 -lshell32 -luser32 -lkernel32 -static
 ```
 
 ### 3. 生成指令文件
